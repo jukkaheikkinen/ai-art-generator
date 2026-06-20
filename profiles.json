@@ -1,0 +1,72 @@
+{
+  "high": {
+    "label": "High-end GPU (16+ GB VRAM)",
+    "examples": "RTX 3090, RTX 4090, RTX 4080, A100",
+    "dtype": "float16",
+    "image_size": 768,
+    "steps": 40,
+    "guidance_scale": 7.5,
+    "attention_slicing": false,
+    "vae_slicing": false,
+    "vae_tiling": false,
+    "cpu_offload": "none",
+    "xformers": false,
+    "torch_compile": false
+  },
+  "medium": {
+    "label": "Mid-range GPU (8–12 GB VRAM)",
+    "examples": "RTX 3070, RTX 3080, RTX 4070, RX 6800",
+    "dtype": "float16",
+    "image_size": 512,
+    "steps": 30,
+    "guidance_scale": 7.5,
+    "attention_slicing": true,
+    "vae_slicing": true,
+    "vae_tiling": false,
+    "cpu_offload": "none",
+    "xformers": false,
+    "torch_compile": false
+  },
+  "low": {
+    "label": "Low-end GPU (4–6 GB VRAM)",
+    "examples": "Quadro P620, GTX 1060, RTX 3050, RX 580",
+    "dtype": "float16",
+    "image_size": 512,
+    "steps": 30,
+    "guidance_scale": 7.5,
+    "attention_slicing": true,
+    "vae_slicing": true,
+    "vae_tiling": false,
+    "cpu_offload": "none",
+    "xformers": false,
+    "torch_compile": false
+  },
+  "minimal": {
+    "label": "Very low VRAM (< 4 GB)",
+    "examples": "GT 1030, GTX 950, integrated GPU",
+    "dtype": "float16",
+    "image_size": 512,
+    "steps": 25,
+    "guidance_scale": 7.0,
+    "attention_slicing": true,
+    "vae_slicing": true,
+    "vae_tiling": true,
+    "cpu_offload": "model",
+    "xformers": false,
+    "torch_compile": false
+  },
+  "cpu": {
+    "label": "CPU only (no GPU)",
+    "examples": "Any machine without a CUDA GPU",
+    "dtype": "float32",
+    "image_size": 512,
+    "steps": 20,
+    "guidance_scale": 7.0,
+    "attention_slicing": true,
+    "vae_slicing": true,
+    "vae_tiling": false,
+    "cpu_offload": "none",
+    "xformers": false,
+    "torch_compile": false
+  }
+}
