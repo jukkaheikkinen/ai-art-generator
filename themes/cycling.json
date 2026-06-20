@@ -1,0 +1,53 @@
+{
+  "name": "Retro Cycling Posters",
+  "description": "1960s Tour de France style vintage cycling poster art",
+  "output_dir": "retro_tdf_posters",
+  "model": "runwayml/stable-diffusion-v1-5",
+  "prompt_template": "vintage 1960s cycling race illustration, {subject} clearly visible on a bicycle, riding through {environment}, {composition}, {palette}, bold flat colors, clear figurative illustration, strong clean outlines, vintage screen print style, muted retro palette, dramatic composition, purely visual no text, masterpiece, best quality, highly detailed",
+  "negative_prompt": "blurry, ugly, distorted, noisy, low quality, bad anatomy, extra limbs, missing limbs, floating limbs, disconnected limbs, malformed hands, extra fingers, fused fingers, deformed body, disfigured, mutation, mutated, poorly drawn figure, poorly drawn bicycle, broken bicycle, extra wheels, missing wheels, modern, photorealistic, 3d render, frame, picture frame, framed, wall, hanging on wall, poster mockup, room, interior, border, mat, shadow, display, text, letters, words, writing, typography, lettering, inscription, alphabet, font, label, watermark, signature, numbers, digits, characters, glyphs",
+  "variations": {
+    "subject": [
+      "road cyclist",
+      "gravel cyclist",
+      "vintage steel bike rider",
+      "peloton",
+      "solo climber",
+      "breakaway rider",
+      "sprinter",
+      "time trialist",
+      "MTB rider",
+      "silhouette cyclist"
+    ],
+    "environment": [
+      "Col du Galibier",
+      "Mont Ventoux",
+      "the Pyrenees",
+      "a Finnish pine forest",
+      "a lakeside road",
+      "an alpine village",
+      "coastal cliffs",
+      "rolling hills",
+      "lavender fields",
+      "a snowy forest",
+      "a gravel road",
+      "a mountain pass",
+      "countryside",
+      "city streets",
+      "a desert canyon"
+    ],
+    "palette": [
+      "warm retro colors, yellow orange red",
+      "cool retro colors, blue green cream",
+      "faded pastel retro tones",
+      "high-contrast vintage colors",
+      "muted earth tones"
+    ],
+    "composition": [
+      "diagonal climb composition",
+      "winding road composition",
+      "centered silhouette composition",
+      "distant rider composition",
+      "close-up profile composition"
+    ]
+  }
+}
