@@ -2,39 +2,38 @@
   "name": "Cartoon Party Game Assets",
   "description": "Groovy mascot-style bomb character with lit fuse and phone prop for party app graphics",
   "output_dir": "party_game_assets",
-  "model": "runwayml/stable-diffusion-v1-5",
-  "prompt_template": "groovy cartoon bomb mascot character, round dark navy bomb body, big expressive oval eyes with highlights, smiling face, rope fuse with bright spark at the tip, white cartoon gloves, cartoon sneakers, {phone_pose}, {character_pose}, {scene}, {composition}, {palette}, 2d vector mascot style, thick clean outlines, flat cel shading, polished mascot illustration, high readability silhouette, isolated simple background, no text, no watermark, no frame",
-  "negative_prompt": "blurry, ugly, distorted, noisy, low quality, bad anatomy, extra limbs, missing limbs, detached limbs, malformed hands, extra fingers, photorealistic, 3d render, realistic, painterly, abstract pattern, random shape blob, scary horror bomb, military weapon realism, smoke cloud explosion, text, letters, words, typography, logo text, watermark, signature, frame, border, mockup, screenshot, UI interface, photo background clutter",
+  "model": "Lykon/dreamshaper-8",
+  "prompt_template": "cartoon bomb mascot, full body, round dark navy bomb with lit fuse, big oval eyes, smiling mouth, white gloves, simple shoes, no human body, {phone_pose}, {character_pose}, {scene}, {composition}, {palette}, clean 2d vector art, thick black outline, flat colors, plain background",
+  "negative_prompt": "human, woman, girl, female body, person, skin, hair, realistic face, anime girl, sexy, text, letters, words, logo, watermark, signature, photo, photorealistic, 3d render, frame, border",
   "variations": {
     "phone_pose": [
-      "holding a smartphone in the left hand like a trivia host",
-      "holding a glowing phone up like a game controller",
-      "showing a smartphone screen toward camera",
-      "holding a phone confidently while pointing with the other hand"
+      "holding a smartphone",
+      "raising a smartphone",
+      "showing a smartphone screen",
+      "pointing at a smartphone"
     ],
     "character_pose": [
-      "dynamic jumping pose",
-      "friendly waving pose",
-      "hero stance with one leg forward",
-      "playful dance pose"
+      "jumping pose",
+      "waving pose",
+      "hero stance",
+      "dance pose"
     ],
     "scene": [
-      "party confetti and tiny stars around the mascot",
-      "simple arcade burst background",
-      "clean sticker-like white backdrop with small accent shapes",
-      "pastel stage floor with minimal props"
+      "arcade burst background",
+      "white sticker backdrop",
+      "minimal pastel stage"
     ],
     "composition": [
-      "centered hero illustration",
-      "slight perspective view",
-      "clean sticker-style composition",
-      "simple app-icon composition"
+      "centered composition",
+      "slight perspective",
+      "sticker style",
+      "app icon style"
     ],
     "palette": [
-      "bold arcade colors with hot pink, electric blue, yellow, and mint",
-      "bright playful colors with orange, teal, purple, and cream",
-      "vibrant cartoon colors with cyan, magenta, gold, and lime",
-      "high-energy palette with neon pink, sky blue, tangerine, and violet"
+      "hot pink, electric blue, yellow, mint",
+      "orange, teal, purple, cream",
+      "cyan, magenta, gold, lime",
+      "neon pink, sky blue, tangerine, violet"
     ]
   }
 }

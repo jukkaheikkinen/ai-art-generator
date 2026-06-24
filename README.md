@@ -77,6 +77,7 @@ python generator.py batch --theme cycling             # up to 50 images
 python generator.py batch --theme cycling --count 10  # limit to 10
 python generator.py batch --theme cycling --steps 40  # higher quality
 python generator.py batch --theme cycling --filter subject="road cyclist,sprinter"
+python generator.py batch --theme cycling --reference examples\ref.png --strength 0.4
 ```
 
 Images are saved to the folder defined in the theme and named `image_0001.png`, `image_0002.png`, … Numbering continues from where you left off — re-running never overwrites existing images.
@@ -86,7 +87,21 @@ Images are saved to the folder defined in the theme and named `image_0001.png`, 
 ```powershell
 python generator.py single --theme cycling                                # random variation
 python generator.py single --theme cycling --prompt "custom prompt text"  # custom prompt
+python generator.py single --theme cycling --reference examples\ref.png --strength 0.35
 ```
+
+### Reference-guided generation (img2img)
+
+Use a reference image when you want the output to follow a specific character shape, composition, or style direction.
+
+```powershell
+python generator.py single --theme party_cartoon --reference examples\bomb.webp --strength 0.35
+python generator.py batch --theme party_cartoon --reference examples\bomb.webp --strength 0.4 --count 12
+```
+
+`--strength` controls how much the model can deviate from the reference:
+- lower (`0.2-0.4`) = preserve reference more
+- higher (`0.5-0.8`) = more creative changes
 
 ### List — preview prompts without generating
 
@@ -224,11 +239,13 @@ Edit `profiles.json` to tweak settings. You only need to include keys you want t
 ```
 python generator.py batch   --theme NAME [--count N] [--filter KEY=V1,V2]
                             [--profile NAME] [--steps N] [--size VALUE] [--guidance F]
-                            [--model MODEL_ID] [--output DIR] [--cpu]
+                            [--model MODEL_ID] [--output DIR]
+                            [--reference FILE] [--strength F] [--cpu]
 
 python generator.py single  --theme NAME [--prompt TEXT]
                             [--profile NAME] [--steps N] [--size VALUE] [--guidance F]
-                            [--model MODEL_ID] [--output DIR] [--cpu]
+                            [--model MODEL_ID] [--output DIR]
+                            [--reference FILE] [--strength F] [--cpu]
 
 python generator.py list    --theme NAME [--count N] [--filter KEY=V1,V2]
 
@@ -242,6 +259,12 @@ python generator.py machine detect | show | set NAME | profiles
 | `--count N` | Max images per batch run (default: 50) |
 | `--steps N` | Inference steps — higher = sharper, slower (default: from profile) |
 | `--size VALUE` | Image size — preset name, `WxH`, or `N` for square (default: from theme or profile) |
+| `--guidance F` | Prompt guidance scale — higher = more literal (default: from profile) |
+| `--filter KEY=V1,V2` | Narrow a variation list for this run (repeatable) |
+| `--profile NAME` | Override machine profile for this run |
+| `--reference FILE` | Enable img2img mode using a reference image |
+| `--strength F` | img2img strength (`0 < F <= 1`), lower keeps more from reference |
+| `--cpu` | Force CPU mode |
 
 ### Size presets
 
@@ -272,10 +295,6 @@ You can set a default size in your theme file so you never need to pass `--size`
 ```json
 "size": "mobile-portrait"
 ```
-| `--guidance F` | Prompt guidance scale — higher = more literal (default: from profile) |
-| `--filter KEY=V1,V2` | Narrow a variation list for this run (repeatable) |
-| `--profile NAME` | Override machine profile for this run |
-| `--cpu` | Force CPU mode |
 
 ---
 

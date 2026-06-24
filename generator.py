@@ -29,7 +29,8 @@ import random
 import argparse
 import torch
 from pathlib import Path
-from diffusers import StableDiffusionPipeline
+from PIL import Image
+from diffusers import StableDiffusionPipeline, StableDiffusionImg2ImgPipeline
 from rich.console import Console
 from rich.panel import Panel
 from rich.progress import (
@@ -284,18 +285,19 @@ def parse_filters(raw: list[str] | None) -> dict:
 # PIPELINE
 # ==========================
 
-def load_pipeline(model_id: str, profile: dict, force_cpu: bool = False):
+def load_pipeline(model_id: str, profile: dict, force_cpu: bool = False, use_img2img: bool = False):
     use_cpu = force_cpu or not torch.cuda.is_available()
     dtype   = torch.float32 if (use_cpu or profile.get("dtype", "float16") == "float32") else torch.float16
     offload = profile.get("cpu_offload", "none")
     device  = "cpu" if use_cpu else "cuda"
+    pipeline_cls = StableDiffusionImg2ImgPipeline if use_img2img else StableDiffusionPipeline
 
     with console.status(
         f"[bold cyan]Loading model [yellow]{model_id}[/yellow]…[/bold cyan]\n"
         "[dim](First run downloads ~4 GB — cached afterwards)[/dim]",
         spinner="dots",
     ):
-        pipe = StableDiffusionPipeline.from_pretrained(
+        pipe = pipeline_cls.from_pretrained(
             model_id, torch_dtype=dtype, safety_checker=None,
         )
         if not use_cpu and offload == "sequential":
@@ -331,6 +333,17 @@ def load_pipeline(model_id: str, profile: dict, force_cpu: bool = False):
 # IMAGE GENERATION
 # ==========================
 
+def load_reference_image(path: str, width: int, height: int) -> Image.Image:
+    p = Path(path)
+    if not p.exists():
+        console.print(f"[red]Reference image not found:[/red] [yellow]{p}[/yellow]")
+        sys.exit(1)
+    image = Image.open(p).convert("RGB")
+    if image.size != (width, height):
+        resample = Image.Resampling.LANCZOS if hasattr(Image, "Resampling") else Image.LANCZOS
+        image = image.resize((width, height), resample)
+    return image
+
 def next_index(output_dir: Path) -> int:
     existing = [
         int(f.stem.rsplit("_", 1)[-1])
@@ -339,15 +352,37 @@ def next_index(output_dir: Path) -> int:
     ]
     return max(existing, default=-1) + 1
 
-def generate_image(pipe, prompt, negative_prompt, output_dir, index, steps, width, height, guidance):
-    image = pipe(
-        prompt=prompt,
-        negative_prompt=negative_prompt,
-        width=width,
-        height=height,
-        num_inference_steps=steps,
-        guidance_scale=guidance,
-    ).images[0]
+def generate_image(
+    pipe,
+    prompt,
+    negative_prompt,
+    output_dir,
+    index,
+    steps,
+    width,
+    height,
+    guidance,
+    reference_image: Image.Image | None = None,
+    strength: float = 0.45,
+):
+    if reference_image is not None:
+        image = pipe(
+            prompt=prompt,
+            negative_prompt=negative_prompt,
+            image=reference_image,
+            strength=strength,
+            num_inference_steps=steps,
+            guidance_scale=guidance,
+        ).images[0]
+    else:
+        image = pipe(
+            prompt=prompt,
+            negative_prompt=negative_prompt,
+            width=width,
+            height=height,
+            num_inference_steps=steps,
+            guidance_scale=guidance,
+        ).images[0]
 
     output_dir.mkdir(parents=True, exist_ok=True)
     filename = output_dir / f"image_{index:04d}.png"
@@ -371,6 +406,14 @@ def cmd_batch(args):
     size_raw   = args.size or theme.get("size") or profile.get("image_size", DEFAULT_SIZE)
     width, height = parse_size(size_raw)
     guidance   = args.guidance if args.guidance is not None else profile.get("guidance_scale", DEFAULT_GUIDANCE)
+    use_img2img = bool(args.reference)
+    strength = args.strength if args.strength is not None else 0.45
+
+    if use_img2img and not (0.0 < strength <= 1.0):
+        console.print("[red]--strength must be > 0.0 and <= 1.0[/red]")
+        sys.exit(1)
+
+    reference_label = f"\nReference: [cyan]{args.reference}[/cyan]   Strength: [cyan]{strength}[/cyan]" if use_img2img else ""
 
     console.print(Panel.fit(
         f"[bold]{theme['name']}[/bold]\n"
@@ -382,12 +425,14 @@ def cmd_batch(args):
         f"Size: [cyan]{width}×{height}[/cyan]   "
         f"Guidance: [cyan]{guidance}[/cyan]\n"
         f"Output : [cyan]{output_dir}[/cyan]" +
+        reference_label +
         (f"\nFilters: [magenta]{filters}[/magenta]" if filters else ""),
         title="🎨 AI Art Generator — batch",
         border_style="cyan",
     ))
 
-    pipe      = load_pipeline(model_id, profile, args.cpu)
+    pipe      = load_pipeline(model_id, profile, args.cpu, use_img2img=use_img2img)
+    reference_image = load_reference_image(args.reference, width, height) if use_img2img else None
     start_idx = next_index(output_dir)
     errors    = 0
 
@@ -411,6 +456,8 @@ def cmd_batch(args):
                 path = generate_image(
                     pipe, prompt, theme.get("negative_prompt", ""),
                     output_dir, start_idx + i, steps, width, height, guidance,
+                    reference_image=reference_image,
+                    strength=strength,
                 )
                 console.print(f"  [green]✓[/green] [dim]{path}[/dim]")
             except Exception as exc:
@@ -435,6 +482,12 @@ def cmd_single(args):
     size_raw   = args.size or theme.get("size") or profile.get("image_size", DEFAULT_SIZE)
     width, height = parse_size(size_raw)
     guidance   = args.guidance if args.guidance is not None else profile.get("guidance_scale", DEFAULT_GUIDANCE)
+    use_img2img = bool(args.reference)
+    strength = args.strength if args.strength is not None else 0.45
+
+    if use_img2img and not (0.0 < strength <= 1.0):
+        console.print("[red]--strength must be > 0.0 and <= 1.0[/red]")
+        sys.exit(1)
 
     if args.prompt:
         prompt = args.prompt
@@ -450,19 +503,24 @@ def cmd_single(args):
         f"Profile: [magenta]{profile_name}[/magenta]   "
         f"Steps: [cyan]{steps}[/cyan]   "
         f"Size: [cyan]{width}×{height}[/cyan]   "
-        f"Guidance: [cyan]{guidance}[/cyan]\n\n"
+        f"Guidance: [cyan]{guidance}[/cyan]"
+        + (f"   Reference: [cyan]{args.reference}[/cyan]   Strength: [cyan]{strength}[/cyan]" if use_img2img else "")
+        + "\n\n"
         f"[dim italic]{prompt[:120]}…[/dim italic]",
         title="🎨 AI Art Generator — single",
         border_style="cyan",
     ))
 
-    pipe = load_pipeline(model_id, profile, args.cpu)
+    pipe = load_pipeline(model_id, profile, args.cpu, use_img2img=use_img2img)
+    reference_image = load_reference_image(args.reference, width, height) if use_img2img else None
     idx  = next_index(output_dir)
 
     with console.status("[bold cyan]Generating image…[/bold cyan]", spinner="dots"):
         path = generate_image(
             pipe, prompt, theme.get("negative_prompt", ""),
             output_dir, idx, steps, width, height, guidance,
+            reference_image=reference_image,
+            strength=strength,
         )
 
     console.print(f"\n[bold green]✓ Saved:[/bold green] [yellow]{path}[/yellow]")
@@ -700,9 +758,11 @@ def build_parser():
             "  python generator.py batch --theme cycling --count 10 --filter subject=\"road cyclist,sprinter\"\n"
             "  python generator.py batch --theme cycling --size portrait\n"
             "  python generator.py batch --theme cycling --size 1080x1920\n"
+            "  python generator.py batch --theme cycling --reference ref.png --strength 0.4\n"
             "  python generator.py single --theme cycling\n"
             "  python generator.py single --theme cycling --size mobile-portrait\n"
             "  python generator.py single --theme cycling --prompt \"custom prompt\"\n"
+            "  python generator.py single --theme cycling --reference ref.png --strength 0.35\n"
             "  python generator.py list --theme cycling\n"
         ),
     )
@@ -716,6 +776,8 @@ def build_parser():
     gen_shared.add_argument("--size",     default=None, type=str,   help="image size: preset name (portrait, mobile-portrait…), WxH (e.g. 1080x1920), or N for square. Default: from theme or profile")
     gen_shared.add_argument("--guidance", default=None, type=float, help="guidance scale (default: from profile)")
     gen_shared.add_argument("--profile",  default=None, metavar="NAME", help="machine profile to use (auto-detect if omitted)")
+    gen_shared.add_argument("--reference", default=None, metavar="FILE", help="reference image path for img2img guidance")
+    gen_shared.add_argument("--strength", default=0.45, type=float, help="img2img strength > 0 and <= 1 (lower keeps more from reference)")
     gen_shared.add_argument("--cpu",      action="store_true",                       help="force CPU mode")
 
     sub = parser.add_subparsers(dest="command", metavar="command")
