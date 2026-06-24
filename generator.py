@@ -52,10 +52,26 @@ DEFAULT_THEME    = "cycling"
 DEFAULT_MODEL    = "runwayml/stable-diffusion-v1-5"
 DEFAULT_COUNT    = 50
 DEFAULT_STEPS    = 30
-DEFAULT_SIZE     = 512
+DEFAULT_SIZE     = "512x512"
 DEFAULT_GUIDANCE = 7.5
 PROFILES_FILE = SCRIPT_DIR / "profiles.json"
 MACHINE_FILE  = SCRIPT_DIR / "machine.json"
+
+# Named size presets — width x height, all multiples of 8
+SIZE_PRESETS: dict[str, tuple[int, int]] = {
+    "square":           (512,  512),
+    "square-lg":        (768,  768),
+    "portrait":         (512,  768),
+    "portrait-lg":      (768, 1024),
+    "landscape":        (768,  512),
+    "landscape-lg":     (1024, 768),
+    "mobile-portrait":  (512,  912),   # ~9:16
+    "mobile-landscape": (912,  512),   # ~16:9
+    "hd":               (768,  432),   # 16:9
+    "4k":               (1024, 576),   # 16:9
+    "a4-portrait":      (595,  842),   # A4 proportions
+    "a4-landscape":     (842,  595),
+}
 
 BUILTIN_PROFILES = {
     "high":    {"label": "High-end GPU (16+ GB VRAM) — RTX 3090/4090, A100",      "dtype": "float16", "image_size": 768, "steps": 40, "guidance_scale": 7.5, "attention_slicing": False, "vae_slicing": False, "vae_tiling": False, "cpu_offload": "none"},
@@ -107,6 +123,45 @@ def resolve_profile(profile_arg: str | None) -> tuple[str, dict]:
         console.print(f"[red]Unknown profile '[bold]{name}[/bold]'. Available: {', '.join(profiles)}[/red]")
         sys.exit(1)
     return name, profiles[name]
+
+def parse_size(value: str) -> tuple[int, int]:
+    """
+    Resolve a size value to (width, height). Accepts:
+      - preset name  e.g. "portrait", "mobile-portrait"
+      - WxH          e.g. "512x768"
+      - N            e.g. "512"  (shorthand for NxN square)
+    All dimensions are rounded up to the nearest multiple of 8.
+    """
+    def snap(n: int) -> int:
+        return ((n + 7) // 8) * 8
+
+    v = str(value).strip().lower()
+
+    if v in SIZE_PRESETS:
+        return SIZE_PRESETS[v]
+
+    if "x" in v:
+        parts = v.split("x", 1)
+        try:
+            w, h = int(parts[0]), int(parts[1])
+            return snap(w), snap(h)
+        except ValueError:
+            pass
+
+    try:
+        n = snap(int(v))
+        return n, n
+    except ValueError:
+        pass
+
+    presets_str = ", ".join(SIZE_PRESETS.keys())
+    console.print(
+        f"[red]Invalid --size '[bold]{value}[/bold]'.[/red]\n"
+        f"Use a preset ([cyan]{presets_str}[/cyan]), "
+        f"[cyan]WxH[/cyan] (e.g. [cyan]1080x1920[/cyan]), "
+        f"or a single number for a square (e.g. [cyan]512[/cyan])."
+    )
+    sys.exit(1)
 
 # ==========================
 # BUILT-IN CYCLING THEME
@@ -284,12 +339,12 @@ def next_index(output_dir: Path) -> int:
     ]
     return max(existing, default=-1) + 1
 
-def generate_image(pipe, prompt, negative_prompt, output_dir, index, steps, size, guidance):
+def generate_image(pipe, prompt, negative_prompt, output_dir, index, steps, width, height, guidance):
     image = pipe(
         prompt=prompt,
         negative_prompt=negative_prompt,
-        width=size,
-        height=size,
+        width=width,
+        height=height,
         num_inference_steps=steps,
         guidance_scale=guidance,
     ).images[0]
@@ -313,7 +368,8 @@ def cmd_batch(args):
     output_dir = Path(args.output or theme.get("output_dir", args.theme + "_output"))
     model_id   = args.model or theme.get("model", DEFAULT_MODEL)
     steps      = args.steps if args.steps is not None else profile.get("steps", DEFAULT_STEPS)
-    size       = args.size if args.size is not None else profile.get("image_size", DEFAULT_SIZE)
+    size_raw   = args.size or theme.get("size") or profile.get("image_size", DEFAULT_SIZE)
+    width, height = parse_size(size_raw)
     guidance   = args.guidance if args.guidance is not None else profile.get("guidance_scale", DEFAULT_GUIDANCE)
 
     console.print(Panel.fit(
@@ -323,7 +379,7 @@ def cmd_batch(args):
         f"Profile: [magenta]{profile_name}[/magenta]   "
         f"Count: [cyan]{total}[/cyan]   "
         f"Steps: [cyan]{steps}[/cyan]   "
-        f"Size: [cyan]{size}×{size}[/cyan]   "
+        f"Size: [cyan]{width}×{height}[/cyan]   "
         f"Guidance: [cyan]{guidance}[/cyan]\n"
         f"Output : [cyan]{output_dir}[/cyan]" +
         (f"\nFilters: [magenta]{filters}[/magenta]" if filters else ""),
@@ -354,7 +410,7 @@ def cmd_batch(args):
             try:
                 path = generate_image(
                     pipe, prompt, theme.get("negative_prompt", ""),
-                    output_dir, start_idx + i, steps, size, guidance,
+                    output_dir, start_idx + i, steps, width, height, guidance,
                 )
                 console.print(f"  [green]✓[/green] [dim]{path}[/dim]")
             except Exception as exc:
@@ -376,7 +432,8 @@ def cmd_single(args):
     output_dir = Path(args.output or theme.get("output_dir", args.theme + "_output"))
     model_id   = args.model or theme.get("model", DEFAULT_MODEL)
     steps      = args.steps if args.steps is not None else profile.get("steps", DEFAULT_STEPS)
-    size       = args.size if args.size is not None else profile.get("image_size", DEFAULT_SIZE)
+    size_raw   = args.size or theme.get("size") or profile.get("image_size", DEFAULT_SIZE)
+    width, height = parse_size(size_raw)
     guidance   = args.guidance if args.guidance is not None else profile.get("guidance_scale", DEFAULT_GUIDANCE)
 
     if args.prompt:
@@ -392,7 +449,7 @@ def cmd_single(args):
         f"{label}\n\n"
         f"Profile: [magenta]{profile_name}[/magenta]   "
         f"Steps: [cyan]{steps}[/cyan]   "
-        f"Size: [cyan]{size}×{size}[/cyan]   "
+        f"Size: [cyan]{width}×{height}[/cyan]   "
         f"Guidance: [cyan]{guidance}[/cyan]\n\n"
         f"[dim italic]{prompt[:120]}…[/dim italic]",
         title="🎨 AI Art Generator — single",
@@ -405,7 +462,7 @@ def cmd_single(args):
     with console.status("[bold cyan]Generating image…[/bold cyan]", spinner="dots"):
         path = generate_image(
             pipe, prompt, theme.get("negative_prompt", ""),
-            output_dir, idx, steps, size, guidance,
+            output_dir, idx, steps, width, height, guidance,
         )
 
     console.print(f"\n[bold green]✓ Saved:[/bold green] [yellow]{path}[/yellow]")
@@ -641,7 +698,10 @@ def build_parser():
             "  python generator.py themes edit cycling\n"
             "  python generator.py batch --theme cycling\n"
             "  python generator.py batch --theme cycling --count 10 --filter subject=\"road cyclist,sprinter\"\n"
+            "  python generator.py batch --theme cycling --size portrait\n"
+            "  python generator.py batch --theme cycling --size 1080x1920\n"
             "  python generator.py single --theme cycling\n"
+            "  python generator.py single --theme cycling --size mobile-portrait\n"
             "  python generator.py single --theme cycling --prompt \"custom prompt\"\n"
             "  python generator.py list --theme cycling\n"
         ),
@@ -653,7 +713,7 @@ def build_parser():
     gen_shared.add_argument("--model",    default=None,          metavar="MODEL_ID", help="override the theme's HuggingFace model")
     gen_shared.add_argument("--output",   default=None,          metavar="DIR",      help="override the theme's output directory")
     gen_shared.add_argument("--steps",    default=None, type=int,   help="inference steps (default: from profile)")
-    gen_shared.add_argument("--size",     default=None, type=int,   help="image size in px (default: from profile)")
+    gen_shared.add_argument("--size",     default=None, type=str,   help="image size: preset name (portrait, mobile-portrait…), WxH (e.g. 1080x1920), or N for square. Default: from theme or profile")
     gen_shared.add_argument("--guidance", default=None, type=float, help="guidance scale (default: from profile)")
     gen_shared.add_argument("--profile",  default=None, metavar="NAME", help="machine profile to use (auto-detect if omitted)")
     gen_shared.add_argument("--cpu",      action="store_true",                       help="force CPU mode")

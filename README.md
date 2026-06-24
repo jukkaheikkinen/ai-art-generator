@@ -161,6 +161,7 @@ python generator.py themes new
 | `variations` | ✓ | Keys mapped to lists of values; every combination = one image |
 | `negative_prompt` | — | What the model should avoid — has a big impact on quality |
 | `output_dir` | — | Output folder (default: `<slug>_output`) |
+| `size` | — | Default size for this theme — preset, `WxH`, or `N` (e.g. `portrait`, `1080x1920`) |
 | `model` | — | HuggingFace model ID (default: `runwayml/stable-diffusion-v1-5`) |
 
 ### Filtering variations at runtime
@@ -222,11 +223,11 @@ Edit `profiles.json` to tweak settings. You only need to include keys you want t
 
 ```
 python generator.py batch   --theme NAME [--count N] [--filter KEY=V1,V2]
-                            [--profile NAME] [--steps N] [--size N] [--guidance F]
+                            [--profile NAME] [--steps N] [--size VALUE] [--guidance F]
                             [--model MODEL_ID] [--output DIR] [--cpu]
 
 python generator.py single  --theme NAME [--prompt TEXT]
-                            [--profile NAME] [--steps N] [--size N] [--guidance F]
+                            [--profile NAME] [--steps N] [--size VALUE] [--guidance F]
                             [--model MODEL_ID] [--output DIR] [--cpu]
 
 python generator.py list    --theme NAME [--count N] [--filter KEY=V1,V2]
@@ -240,7 +241,37 @@ python generator.py machine detect | show | set NAME | profiles
 |------|-------------|
 | `--count N` | Max images per batch run (default: 50) |
 | `--steps N` | Inference steps — higher = sharper, slower (default: from profile) |
-| `--size N` | Image size in pixels, square (default: from profile) |
+| `--size VALUE` | Image size — preset name, `WxH`, or `N` for square (default: from theme or profile) |
+
+### Size presets
+
+| Preset | Dimensions | Use case |
+|--------|------------|----------|
+| `square` | 512 × 512 | Default, social media |
+| `square-lg` | 768 × 768 | Higher quality square |
+| `portrait` | 512 × 768 | Print, Pinterest |
+| `portrait-lg` | 768 × 1024 | High-res print |
+| `landscape` | 768 × 512 | Banner, wide format |
+| `landscape-lg` | 1024 × 768 | High-res landscape |
+| `mobile-portrait` | 512 × 912 | Mobile wallpaper (9:16) |
+| `mobile-landscape` | 912 × 512 | Mobile landscape (16:9) |
+| `hd` | 768 × 432 | HD video frame (16:9) |
+| `4k` | 1024 × 576 | 4K video frame (16:9) |
+| `a4-portrait` | 595 × 842 | A4 document portrait |
+| `a4-landscape` | 842 × 595 | A4 document landscape |
+
+You can also use `WxH` for any custom size (dimensions are snapped to the nearest multiple of 8, which SD requires):
+
+```powershell
+python generator.py single --theme cycling --size 1080x1920   # custom portrait
+python generator.py batch  --theme cycling --size 640x480     # custom landscape
+```
+
+You can set a default size in your theme file so you never need to pass `--size`:
+
+```json
+"size": "mobile-portrait"
+```
 | `--guidance F` | Prompt guidance scale — higher = more literal (default: from profile) |
 | `--filter KEY=V1,V2` | Narrow a variation list for this run (repeatable) |
 | `--profile NAME` | Override machine profile for this run |
